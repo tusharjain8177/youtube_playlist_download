@@ -22,9 +22,12 @@ def download_playlist(playlist_url, progress_bar, status_text):
         with tempfile.TemporaryDirectory() as temp_dir:
             try:
                 # Configure yt-dlp options
+                download_path = os.path.join(temp_dir, 'downloads')
+                os.makedirs(download_path, exist_ok=True)  # Create downloads directory
+                
                 ydl_opts = {
-                    'format': 'bestaudio[ext=m4a]',  # Changed to audio only for smaller files
-                    'outtmpl': os.path.join(temp_dir, '%(title)s.%(ext)s'),
+                    'format': 'bestaudio[ext=m4a]',
+                    'outtmpl': os.path.join(download_path, '%(title)s.%(ext)s'),  # Updated path
                     'ignoreerrors': True,
                     'no_warnings': True,
                     'quiet': True,
@@ -73,16 +76,22 @@ def download_playlist(playlist_url, progress_bar, status_text):
 
                 # After download, create a zip file
                 zip_path = os.path.join(temp_dir, f"{playlist_title}.zip")
-                shutil.make_archive(zip_path[:-4], 'zip', os.path.join(temp_dir, playlist_title))
-                
-                # Offer the zip file for download
-                with open(zip_path, 'rb') as f:
-                    st.download_button(
-                        label="Download ZIP file",
-                        data=f,
-                        file_name=f"{playlist_title}.zip",
-                        mime="application/zip"
-                    )
+                if os.path.exists(download_path):  # Check if directory exists and has files
+                    shutil.make_archive(zip_path[:-4], 'zip', download_path)
+                    
+                    # Offer the zip file for download
+                    if os.path.exists(zip_path):  # Verify zip file was created
+                        with open(zip_path, 'rb') as f:
+                            st.download_button(
+                                label="Download ZIP file",
+                                data=f,
+                                file_name=f"{playlist_title}.zip",
+                                mime="application/zip"
+                            )
+                    else:
+                        st.error("Failed to create zip file")
+                else:
+                    st.error("No files were downloaded")
 
             except Exception as e:
                 st.error(f"An error occurred: {str(e)}")
